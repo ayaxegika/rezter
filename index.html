@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Retention Progress</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+  --bg-main:#0f2027;
+  --accent:#00f5ff;
+  --accent2:#7CFF00;
+  --pink:#ff4ecd;
+}
+
+body{
+  margin:0;
+  padding:20px;
+  font-family:'Inter',sans-serif;
+  background:var(--bg-main);
+  color:#fff;
+}
+
+h1{
+  text-align:center;
+  font-size:40px;
+  margin-bottom:20px;
+  background:linear-gradient(90deg,var(--accent),var(--pink));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+button{
+  padding:12px 28px;
+  font-weight:600;
+  border-radius:30px;
+  border:none;
+  cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),#6fffff);
+  box-shadow:0 5px 15px rgba(0,255,255,0.3);
+  transition:0.3s;
+}
+button:hover{transform:scale(1.05);}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+  background:rgba(255,255,255,0.05);
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,0.4);
+}
+th,td{padding:12px;text-align:center;}
+th{background:rgba(255,255,255,0.1);font-weight:600;}
+input{
+  width:100%;
+  padding:8px;
+  border-radius:10px;
+  border:none;
+  text-align:center;
+  background:rgba(255,255,255,0.05);
+  color:#fff;
+}
+input:focus{outline:none;box-shadow:0 0 10px var(--accent);}
+
+.progress{
+  width:100%;
+  height:20px;
+  background:rgba(255,255,255,0.1);
+  border-radius:20px;
+  overflow:hidden;
+}
+.progress-bar{
+  height:100%;
+  font-weight:700;
+  transition:width .8s, background .8s;
+}
+
+.del{cursor:pointer;color:#ff5c5c;font-weight:700;font-size:18px;}
+
+#tvHeader{text-align:center;font-weight:700;margin-bottom:20px;font-size:calc(18px + 1vw);}
+
+#tvBoard{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+}
+
+.tv-card{
+  background:rgba(255,255,255,0.08);
+  border-radius:15px;
+  padding:15px;
+  text-align:center;
+  font-size:calc(12px + 0.5vw);
+  transition:0.3s;
+}
+.tv-card:hover{
+  transform:scale(1.05);
+  box-shadow:0 5px 25px rgba(255,255,255,0.2);
+}
+.tv-rank-1{box-shadow:0 0 35px gold; border:2px solid gold;}
+.tv-rank-2{box-shadow:0 0 30px silver; border:2px solid silver;}
+.tv-rank-3{box-shadow:0 0 30px #cd7f32; border:2px solid #cd7f32;}
+
+#overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.85);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+.popup{
+  background:#fff;
+  color:#000;
+  padding:40px;
+  border-radius:20px;
+  font-size:calc(24px + 1vw);
+  font-weight:700;
+  text-align:center;
+}
+
+.confetti{
+  position:fixed;
+  width:10px;
+  height:14px;
+  top:-10px;
+  animation:fall 3.5s linear forwards;
+  z-index:2000;
+}
+@keyframes fall{to{transform:translateY(120vh) rotate(1080deg);opacity:0}}
+</style>
+</head>
+<body>
+
+<h1>Retention Progress</h1>
+
+<div id="editor">
+  <button id="addBtn">Add Retention</button>
+  <button id="resetBtn">Reset TARGET</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Tag</th>
+        <th>Monat</th>
+        <th>Target</th>
+        <th>Progress</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div id="tv">
+  <div id="tvHeader"></div>
+  <div id="tvBoard"></div>
+</div>
+
+<div id="overlay"><div class="popup" id="popup"></div></div>
+
+<script>
+const isTV = new URLSearchParams(location.search).get("mode")==="tv";
+const socket = io();
+
+const editor = document.getElementById("editor");
+const tbody = document.querySelector("tbody");
+const tv = document.getElementById("tv");
+const tvBoard = document.getElementById("tvBoard");
+const tvHeader = document.getElementById("tvHeader");
+
+if(isTV){ editor.style.display="none"; document.documentElement.requestFullscreen?.(); }
+else tv.style.display="none";
+
+/* POPUP */
+const overlay = document.getElementById("overlay");
+const popup = document.getElementById("popup");
+const queue=[]; let active=false;
+function showPopup(html){queue.push(html); if(!active) nextPopup();}
+function nextPopup(){if(!queue.length){active=false;return;} active=true; popup.innerHTML=queue.shift(); overlay.style.display="flex"; confetti(); setTimeout(()=>{overlay.style.display="none"; setTimeout(nextPopup,400);},3000);}
+function confetti(){for(let i=0;i<120;i++){const c=document.createElement("div");c.className="confetti";c.style.left=Math.random()*100+"vw";c.style.background=`hsl(${Math.random()*360},100%,50%)`;document.body.appendChild(c);setTimeout(()=>c.remove(),4000);}}
+function genId(){return"e-"+Date.now()+"-"+Math.random();}
+
+/* EDITOR */
+document.getElementById("addBtn").onclick=()=>addRow({},true);
+document.getElementById("resetBtn").onclick=()=>socket.emit("resetTarget");
+
+function addRow(d={},syncNow=false){
+  const r=document.createElement("tr");
+  r.dataset.id=d.id||genId();
+  r.innerHTML=`
+    <td><input value="${d.name||''}"></td>
+    <td><input type="number" value="${d.tag||0}"></td>
+    <td><input type="number" value="${d.monat||0}"></td>
+    <td><input type="number" value="${d.target||0}"></td>
+    <td><div class="progress"><div class="progress-bar">0%</div></div></td>
+    <td class="del">✖</td>
+  `;
+  tbody.appendChild(r);
+
+  const inputs = r.querySelectorAll("input");
+  let oldTag = +inputs[1].value;
+
+  inputs.forEach((input,index)=>{
+    input.addEventListener("blur",()=>{
+      if(index===1){
+        const diff = +inputs[1].value - oldTag;
+        if(diff>0){
+          inputs[2].value = +inputs[2].value + diff;
+          socket.emit("bonus",{name:inputs[0].value||"Employee",diff});
+        }
+        oldTag = +inputs[1].value;
+      }
+      updateRow(r);
+      sendUpdate();
+    });
+  });
+
+  // Удаление сотрудника
+  r.querySelector(".del").onclick=()=>{
+    const id = r.dataset.id;
+    socket.emit("deleteEmployee", id);
+  }
+
+  updateRow(r);
+  if(syncNow) sendUpdate();
+}
+
+function updateRow(r){
+  const m=+r.children[2].children[0].value;
+  const t=+r.children[3].children[0].value;
+  const p = t?Math.min(100,Math.round(m/t*100)):0;
+  const bar = r.querySelector(".progress-bar");
+  bar.style.width=p+"%";
+  bar.style.background = p<50?"#ff4d4d":p<80?"#ffd93d":"#7CFF00";
+  bar.textContent=p+"%";
+}
+
+function sendUpdate(){
+  const data = [...tbody.children].map(r=>{
+    updateRow(r);
+    return {
+      id:r.dataset.id,
+      name:r.children[0].children[0].value,
+      tag:+r.children[1].children[0].value,
+      monat:+r.children[2].children[0].value,
+      target:+r.children[3].children[0].value,
+      targetReached:0
+    };
+  });
+  socket.emit("update", data);
+}
+
+/* TV */
+function renderTV(rows){
+  tvBoard.innerHTML="";
+  const totalMonat = rows.reduce((s,e)=>s+e.monat,0);
+  const totalTarget = rows.reduce((s,e)=>s+e.target,0);
+  tvHeader.textContent=`TEAM TOTAL: ${totalMonat}$ / ${totalTarget}$`;
+  rows.sort((a,b)=>b.monat-a.monat).forEach((e,i)=>{
+    const p = e.target?Math.min(100,Math.round(e.monat/e.target*100)):0;
+    const d = document.createElement("div");
+    d.className="tv-card "+(i<3?`tv-rank-${i+1}`:"");
+    const color = p<50?"#ff4d4d":p<80?"#ffd93d":"#7CFF00";
+    d.innerHTML=`<h2>#${i+1} ${e.name}</h2>
+      <div>Tag: <b>${e.tag}$</b></div>
+      <div>Monat: <b>${e.monat}$</b></div>
+      <div>Target: <b>${e.target}$</b></div>
+      <div class="progress"><div class="progress-bar" style="width:${p}%; background:${color}">${p}%</div></div>`;
+    tvBoard.appendChild(d);
+  });
+}
+
+/* SOCKET */
+socket.on("init", rows => {tbody.innerHTML=""; rows.forEach(r=>addRow(r)); if(isTV) renderTV(rows);});
+socket.on("update", rows => {tbody.innerHTML=""; rows.forEach(r=>addRow(r)); if(isTV) renderTV(rows);});
+socket.on("bonus", d => {if(isTV) showPopup(`Поздравляем!🎉<br>${d.name}<br>+${d.diff}$`);});
+socket.on("target", d => {if(isTV) showPopup(`🎯 TARGET 100%!<br>${d.name}`);});
+socket.on("deleteEmployee", id=>{
+  const row = [...tbody.children].find(r=>r.dataset.id===id);
+  if(row) row.remove();
+  if(isTV) renderTV([...tbody.children].map(r=>{
+    return {
+      id:r.dataset.id,
+      name:r.children[0].children[0].value,
+      tag:+r.children[1].children[0].value,
+      monat:+r.children[2].children[0].value,
+      target:+r.children[3].children[0].value
+    }
+  }));
+});
+</script>
+
+</body>
+</html>

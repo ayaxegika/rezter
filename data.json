@@ -1,0 +1,58 @@
+[
+  {
+    "id": "e-1767799613862-0.1965463087417233",
+    "name": "Linda Weber",
+    "tag": 0,
+    "monat": 0,
+    "target": 100000,
+    "targetReached": false
+  },
+  {
+    "id": "e-1767799633649-0.8589109842185257",
+    "name": "Nora Bergmann",
+    "tag": 0,
+    "monat": 0,
+    "target": 120000,
+    "targetReached": false
+  },
+  {
+    "id": "e-1767799654806-0.2512257890219677",
+    "name": "Rebecca Ostendorf",
+    "tag": 0,
+    "monat": 0,
+    "target": 100000,
+    "targetReached": false
+  },
+  {
+    "id": "e-1767799660196-0.6594113351286658",
+    "name": "Alex King",
+    "tag": 0,
+    "monat": 0,
+    "target": 80000,
+    "targetReached": false
+  },
+  {
+    "id": "e-1767799665651-0.9061271023983671",
+    "name": "Christa Kippermann",
+    "tag": 0,
+    "monat": 1136,
+    "target": 120000,
+    "targetReached": false
+  },
+  {
+    "id": "e-1767799669382-0.38280763420213404",
+    "name": "Nils Becker ",
+    "tag": 0,
+    "monat": 0,
+    "target": 60000,
+    "targetReached": false
+  },
+  {
+    "id": "e-1767799677705-0.30703482430870677",
+    "name": "Anna Weiss",
+    "tag": 0,
+    "monat": 0,
+    "target": 80000,
+    "targetReached": false
+  }
+]
